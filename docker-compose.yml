@@ -1,5 +1,5 @@
 services:
-  whoogle:
+  go:
     build: .
     restart: unless-stopped
     environment: 
