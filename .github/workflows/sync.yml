@@ -1,34 +1,34 @@
-# File: .github/workflows/repo-sync.yml
-name: Sync Fork
+name: Sync
 
 on:
-  #schedule:
-  #- cron: '0 0 */1 * *' # every day
+  schedule:
+  - cron: '0 0 */1 * *' # every day
   workflow_dispatch:
 
 env:
   SYNC_REPO: benbusby/whoogle-search
 
-
 jobs:
-  repo-sync:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Checkout sync-repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: ${{ env.SYNC_REPO }}
-          path: './sync-me'
+          path: './sync'
       - name: copy from sync-repo
         run: |
-          rm -rf ./sync-me/misc/heroku-regen.sh
-          cp -r  ./sync-me/app .
-          cp -r  ./sync-me/misc .
-          cp -r  ./sync-me/.replit .
-          cp -r  ./sync-me/requirements.txt .
-          cp -r  ./sync-me/run .
-          rm -rf ./sync-me
+          rm -rf ./sync/misc/heroku-regen.sh
+          cp -r  ./sync/app .
+          cp -r  ./sync/misc .
+          cp -r  ./sync/requirements.txt .
+          cp -r  ./sync/run .
+          cat ./sync/Dockerfile | sed -e "s/\#COPY/COPY/g" > ./sync/Dockerfile
+          mv ./sync/docker-compose.yml ./docker-compose.yml.backup
+          mv ./sync/whoogle.template.env .
+          rm -rf ./sync
       - name: Get last commit message
         id: last-commit-message
         run: |
