@@ -25,7 +25,7 @@ jobs:
           cp -r  ./sync/misc .
           cp -r  ./sync/requirements.txt .
           cp -r  ./sync/run .
-          cat ./sync/Dockerfile | sed -e "s/\#COPY/COPY/g" > ./sync/Dockerfile
+          cat ./sync/Dockerfile | sed -e "s/\#COPY/COPY/g" > ./Dockerfile
           mv ./sync/docker-compose.yml ./docker-compose.yml.backup
           mv ./sync/whoogle.template.env .
           rm -rf ./sync
