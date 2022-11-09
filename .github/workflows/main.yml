@@ -1,0 +1,40 @@
+# File: .github/workflows/repo-sync.yml
+name: Sync Fork
+
+on:
+  #schedule:
+  #- cron: '0 0 */1 * *' # every day
+  workflow_dispatch:
+
+env:
+  SYNC_REPO: benbusby/whoogle-search
+
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Checkout sync-repo
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ env.SYNC_REPO }}
+          path: './sync-me'
+      - name: copy from sync-repo
+        run: |
+          rm -rf ./sync-me/misc/heroku-regen.sh
+          cp -r  ./sync-me/app .
+          cp -r  ./sync-me/misc .
+          cp -r  ./sync-me/.replit .
+          cp -r  ./sync-me/requirements.txt .
+          cp -r  ./sync-me/run .
+          rm -rf ./sync-me
+      - name: Get last commit message
+        id: last-commit-message
+        run: |
+          echo "::set-output name=msg::$(git log -1 --pretty=%s)"
+      - uses: EndBug/add-and-commit@v9
+        with:
+          message: ${{ steps.last-commit-message.outputs.msg }}
+          committer_name: GitHub Actions
+          committer_email: actions@github.com
