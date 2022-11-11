@@ -2,8 +2,8 @@ name: deploy
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '05 21 * * *'
+  #schedule:
+    #- cron: '05 21 * * *'
 
 jobs:
   deploy:
