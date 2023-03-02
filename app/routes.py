@@ -48,6 +48,14 @@ def get_search_name(tbm):
 def auth_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        # do not ask password if cookies already present
+        if (
+            valid_user_session(session)
+            and 'cookies_disabled' not in request.args
+            and session['auth']
+        ):
+            return f(*args, **kwargs)
+
         auth = request.authorization
 
         # Skip if username/password not set
@@ -57,6 +65,7 @@ def auth_required(f):
                 auth
                 and whoogle_user == auth.username
                 and whoogle_pass == auth.password):
+            session['auth'] = True
             return f(*args, **kwargs)
         else:
             return make_response('Not logged in', 401, {
@@ -140,6 +149,7 @@ def before_request_func():
         session['config'] = default_config
         session['uuid'] = str(uuid.uuid4())
         session['key'] = app.enc_key
+        session['auth'] = False
 
     # Establish config values per user session
     g.user_config = Config(**session['config'])
@@ -344,12 +354,10 @@ def search():
     # check for widgets and add if requested
     if search_util.widget != '':
         html_soup = bsoup(str(response), 'html.parser')
-        match search_util.widget:
-            case 'ip':
-                response = add_ip_card(html_soup, get_client_ip(request))
-            case 'calculator':
-                if not 'nojs' in request.args:
-                    response = add_calculator_card(html_soup)
+        if search_util.widget == 'ip':
+            response = add_ip_card(html_soup, get_client_ip(request))
+        elif search_util.widget == 'calculator' and not 'nojs' in request.args:
+            response = add_calculator_card(html_soup)
 
     # Update tabs content
     tabs = get_tabs_content(app.config['HEADER_TABS'],
