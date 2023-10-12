@@ -17,7 +17,8 @@ from app.models.config import Config
 from app.models.endpoint import Endpoint
 from app.request import Request, TorError
 from app.utils.bangs import resolve_bang
-from app.utils.misc import get_proxy_host_url
+from app.utils.misc import empty_gif, placeholder_img, get_proxy_host_url, \
+    fetch_favicon
 from app.filter import Filter
 from app.utils.misc import read_config_bool, get_client_ip, get_request_url, \
     check_for_update
@@ -470,8 +471,6 @@ def imgres():
 @session_required
 @auth_required
 def element():
-    empty_gif = base64.b64decode(
-        'R0lGODlhAQABAIAAAP///////yH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==')
     element_url = src_url = request.args.get('url')
     if element_url.startswith('gAAAAA'):
         try:
@@ -490,7 +489,17 @@ def element():
         return send_file(io.BytesIO(empty_gif), mimetype='image/gif')
 
     try:
-        file_data = g.user_request.send(base_url=src_url).content
+        response = g.user_request.send(base_url=src_url)
+
+        # Display an empty gif if the requested element couldn't be retrieved
+        if response.status_code != 200 or len(response.content) == 0:
+            if 'favicon' in src_url:
+                favicon = fetch_favicon(src_url)
+                return send_file(io.BytesIO(favicon), mimetype='image/png')
+            else:
+                return send_file(io.BytesIO(empty_gif), mimetype='image/gif')
+
+        file_data = response.content
         tmp_mem = io.BytesIO()
         tmp_mem.write(file_data)
         tmp_mem.seek(0)

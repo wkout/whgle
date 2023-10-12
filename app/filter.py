@@ -161,17 +161,22 @@ class Filter:
         self.update_styling()
         self.remove_block_tabs()
 
-        for div in self.main_divs:
-            self.sanitize_div(div)
+        # self.main_divs is only populated for the main page of search results
+        # (i.e. not images/news/etc).
+        if self.main_divs:
+            for div in self.main_divs:
+                self.sanitize_div(div)
 
         for img in [_ for _ in self.soup.find_all('img') if 'src' in _.attrs]:
             self.update_element_src(img, 'image/png')
 
         for audio in [_ for _ in self.soup.find_all('audio') if 'src' in _.attrs]:
             self.update_element_src(audio, 'audio/mpeg')
+            audio['controls'] = ''
 
         for link in self.soup.find_all('a', href=True):
             self.update_link(link)
+            self.add_favicon(link)
 
         if self.config.alts:
             self.site_alt_swap()
@@ -228,6 +233,57 @@ class Filter:
                 iframe.decompose()
 
             d.string = str(div_soup)
+
+    def add_favicon(self, link) -> None:
+        """Adds icons for each returned result, using the result site's favicon
+
+        Returns:
+            None (The soup object is modified directly)
+        """
+        # Skip empty, parentless, or internal links
+        if not link or not link.parent or not link['href'].startswith('http'):
+            return
+
+        parent = link.parent
+        is_result_div = False
+
+        # Check each parent to make sure that the div doesn't already have a
+        # favicon attached, and that the div is a result div
+        while parent:
+            p_cls = parent.attrs.get('class') or []
+            if 'has-favicon' in p_cls or GClasses.scroller_class in p_cls:
+                return
+            elif GClasses.result_class_a not in p_cls:
+                parent = parent.parent
+            else:
+                is_result_div = True
+                break
+
+        if not is_result_div:
+            return
+
+        # Construct the html for inserting the icon into the parent div
+        parsed = urlparse.urlparse(link['href'])
+        favicon = self.encrypt_path(
+            f'{parsed.scheme}://{parsed.netloc}/favicon.ico',
+            is_element=True)
+        src = f'{self.root_url}/{Endpoint.element}?url={favicon}' + \
+            '&type=image/x-icon'
+        html = f'<img class="site-favicon" src="{src}">'
+
+        favicon = BeautifulSoup(html, 'html.parser')
+        link.parent.insert(0, favicon)
+
+        # Update all parents to indicate that a favicon has been attached
+        parent = link.parent
+        while parent:
+            p_cls = parent.get('class') or []
+            p_cls.append('has-favicon')
+            parent['class'] = p_cls
+            parent = parent.parent
+
+            if GClasses.result_class_a in p_cls:
+                break
 
     def remove_site_blocks(self, soup) -> None:
         if not self.config.block or not soup.body:
